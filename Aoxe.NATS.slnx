@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Folder Name="/demo/" />
+  <Folder Name="/src/">
+    <Project Path="src\Aoxe.NATS.Client\Aoxe.NATS.Client.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
