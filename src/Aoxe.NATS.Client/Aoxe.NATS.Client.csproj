@@ -11,4 +11,8 @@
       <PackageReference Include="NATS.Net" Version="2.5.2" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Aoxe.NATS.Abstractions\Aoxe.NATS.Abstractions.csproj" />
+    </ItemGroup>
+
 </Project>

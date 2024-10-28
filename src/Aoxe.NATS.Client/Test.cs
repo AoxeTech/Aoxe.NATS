@@ -8,6 +8,75 @@ public class Test(
     INatsSvcContext natsSvcContext
 )
 {
+    public async ValueTask NatsClientTestAsync()
+    {
+        await natsClient.ConnectAsync();
+        var timespan = await natsClient.PingAsync();
+        var msg0 = await natsClient.RequestAsync<int>();
+        await natsClient.PublishAsync<int>();
+        var msg1 = await natsClient.SubscribeAsync<int>();
+    }
+
+    public async ValueTask NatsJsClientTestAsync()
+    {
+        await natsJsContext.CreateOrderedConsumerAsync();
+        await natsJsContext.CreateOrUpdateConsumerAsync();
+        await natsJsContext.CreateStreamAsync();
+        await natsJsContext.DeleteConsumerAsync();
+        await natsJsContext.DeleteMessageAsync();
+        await natsJsContext.DeleteStreamAsync();
+        await natsJsContext.CreateConsumerAsync();
+        await natsJsContext.GetAccountInfoAsync();
+        await natsJsContext.GetConsumerAsync();
+        await natsJsContext.GetStreamAsync();
+        await natsJsContext.JSRequestResponseAsync<>();
+        await natsJsContext.ListConsumersAsync();
+        await natsJsContext.ListConsumerNamesAsync();
+        await natsJsContext.ListStreamNamesAsync();
+        await natsJsContext.ListStreamsAsync();
+        await natsJsContext.PauseConsumerAsync();
+        await natsJsContext.PublishAsync();
+        await natsJsContext.PublishConcurrentAsync();
+        await natsJsContext.PurgeStreamAsync();
+        await natsJsContext.ResumeConsumerAsync();
+        await natsJsContext.UpdateConsumerAsync();
+        await natsJsContext.UpdateStreamAsync();
+    }
+
+    public async ValueTask NatsKvClientTestAsync()
+    {
+        await natsKvContext.CreateStoreAsync();
+        await natsKvContext.DeleteStoreAsync();
+        await natsKvContext.GetBucketNamesAsync();
+        await natsKvContext.GetStatusesAsync();
+        await natsKvContext.GetStoreAsync();
+        await natsKvContext.UpdateStoreAsync();
+    }
+
+    public async ValueTask NatsObjClientTestAsync()
+    {
+        var store = await natsObjContext.CreateObjectStoreAsync();
+        var store2 = await natsObjContext.GetObjectStoreAsync();
+
+        await store.DeleteAsync();
+        await store.GetAsync();
+        await store.ListAsync();
+        await store.PutAsync();
+        await store.WatchAsync();
+        await store.GetInfoAsync();
+        await store.SealAsync();
+        await store.AddLinkAsync();
+        await store.GetBytesAsync();
+        await store.GetStatusAsync();
+        await store.UpdateMetaAsync();
+        await store.AddBucketLinkAsync();
+    }
+
+    public async ValueTask NatsSvcClientTestAsync()
+    {
+        natsSvcContext.AddServiceAsync("test-service");
+    }
+
     public async ValueTask PublishSubscribeAsync()
     {
         var subscription = Task.Run(async () =>
@@ -34,6 +103,60 @@ public class Test(
 
         // Make sure subscription completes cleanly
         await subscription;
+    }
+
+    public async ValueTask QueueGroupAsync()
+    {
+        // Create a cancellation token source to stop the subscriptions
+        using var cts = new CancellationTokenSource();
+
+        var replyTasks = new List<Task>();
+
+        for (var i = 0; i < 3; i++)
+        {
+            // Create three subscriptions all on the same queue group
+            // Create a background message loop for every subscription
+            var replyTaskId = i;
+            replyTasks.Add(
+                Task.Run(async () =>
+                {
+                    // Retrieve messages until unsubscribed
+                    await foreach (
+                        var msg in natsClient.SubscribeAsync<int>(
+                            "math.double",
+                            queueGroup: "maths-service",
+                            cancellationToken: cts.Token
+                        )
+                    )
+                    {
+                        Console.WriteLine($"[{replyTaskId}] Received request: {msg.Data}");
+                        await msg.ReplyAsync($"Answer is: {2 * msg.Data}");
+                    }
+
+                    Console.WriteLine($"[{replyTaskId}] Done");
+                })
+            );
+        }
+
+        // Give subscriptions time to start
+        await Task.Delay(1000);
+
+        // Send a few requests
+        for (var i = 0; i < 10; i++)
+        {
+            var reply = await natsClient.RequestAsync<int, string>("math.double", i);
+            Console.WriteLine($"Reply: '{reply.Data}'");
+        }
+
+        Console.WriteLine("Stopping...");
+
+        // Cancellation token will unsubscribe and complete the message loops
+        cts.Cancel();
+
+        // Make sure all tasks finished cleanly
+        await Task.WhenAll(replyTasks);
+
+        Console.WriteLine("All done");
     }
 
     public async ValueTask JetStreamAsync()
