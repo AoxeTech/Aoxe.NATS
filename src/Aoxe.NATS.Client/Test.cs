@@ -19,7 +19,8 @@ public class Test(
 
     public async ValueTask NatsJsClientTestAsync()
     {
-        await natsJsContext.CreateOrderedConsumerAsync();
+        var i = await natsJsContext.CreateOrderedConsumerAsync();
+        i.EnsureSuccess();
         await natsJsContext.CreateOrUpdateConsumerAsync();
         await natsJsContext.CreateStreamAsync();
         await natsJsContext.DeleteConsumerAsync();
